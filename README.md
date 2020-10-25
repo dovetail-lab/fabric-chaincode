@@ -28,4 +28,4 @@ It also includes utility functions that can be used by Flogo models:
 
 With these extensions, Hyperledger Fabric chaincode can be designed and implemented with zero code. Refer to [samples](https://github.com/dovetail-lab/fabric-samples) for more details about using these exetentions for developing Hyperledger Fabric chaincode with zero-code.
 
-To use this extension in Flogo model, you can create [`fabricExtension.zip`](../fabricExtension.zip) by using the script [`zip-fabric.sh`](../zip-fabric.sh), and then upload the zip-file to the `TIBCO Flogo® Enterprise 2.10` as an extension, and so they are available for modeling chaincode.
+To use this extension in Flogo model, you can create `fabricExtension.zip` by using the script [`zip-fabric.sh`](./zip-fabric.sh), and then upload the zip-file to the `TIBCO Flogo® Enterprise 2.10` as an extension, and so they are available for modeling chaincode.
