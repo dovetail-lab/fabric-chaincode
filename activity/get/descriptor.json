@@ -1,0 +1,51 @@
+{
+    "name": "fabric-get",
+    "version": "2.0.0",
+    "type": "flogo:activity",
+    "title": "Get",
+    "author": "TIBCO Software Inc.",
+    "display": {
+        "category": "fabric",
+        "visible": true,
+        "smallIcon": "ic-get.png",
+        "description": "This activity fetches data by key from fabric ledger"
+    },
+    "ref": "github.com/dovetail-lab/fabric-chaincode/activity/get",
+    "homepage": "http://github.com/dovetail-lab/fabric-chaincode/activity/get",
+    "inputs": [{
+            "name": "key",
+            "type": "string",
+            "required": true
+        },
+        {
+            "name": "privateCollection",
+            "type": "string",
+            "required": false
+        }
+    ],
+    "outputs": [{
+            "name": "code",
+            "type": "integer"
+        },
+        {
+            "name": "message",
+            "type": "string"
+        },
+        {
+            "name": "key",
+            "type": "string"
+        },
+        {
+            "name": "result",
+            "type": "object",
+            "display": {
+                "name": "Result object definition",
+                "description": "Schema definition of the result, e.g.,\r\n{\r\n  \"param1\": \"string\",\r\n  \"param2\": {\"field1\": 0}\r\n}",
+                "type": "texteditor",
+                "syntax": "json",
+                "mappable": true,
+                "visible": true
+            }
+        }
+    ]
+}

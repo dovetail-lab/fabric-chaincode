@@ -1,0 +1,50 @@
+{
+    "name": "fabric-setevent",
+    "version": "2.0.0",
+    "type": "flogo:activity",
+    "title": "Set Event",
+    "author": "TIBCO Software Inc.",
+    "display": {
+        "category": "fabric",
+        "visible": true,
+        "smallIcon": "ic-event.png",
+        "description": "This activity sets an event on a fabric block"
+    },
+    "ref": "github.com/dovetail-lab/fabric-chaincode/activity/setevent",
+    "homepage": "http://github.com/dovetail-lab/fabric-chaincode/activity/setevent",
+    "inputs": [{
+            "name": "name",
+            "type": "string",
+            "required": true
+        },
+        {
+            "name": "payload",
+            "type": "object",
+            "display": {
+                "name": "Event payload definition",
+                "description": "Schema definition of the event payload, e.g.,\r\n{\r\n  \"param1\": \"string\",\r\n  \"param2\": {\"field1\": 0}\r\n}",
+                "type": "texteditor",
+                "syntax": "json",
+                "mappable": true,
+                "visible": true
+            }
+        }
+    ],
+    "outputs": [{
+            "name": "code",
+            "type": "integer"
+        },
+        {
+            "name": "message",
+            "type": "string"
+        },
+        {
+            "name": "name",
+            "type": "string"
+        },
+        {
+            "name": "result",
+            "type": "object"
+        }
+    ]
+}

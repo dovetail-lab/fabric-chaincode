@@ -1,0 +1,66 @@
+
+{
+    "name": "fabric-putall",
+    "version": "2.0.0",
+    "type": "flogo:activity",
+    "title": "Put All",
+    "author": "TIBCO Software Inc.",
+    "display": {
+        "category": "fabric",
+        "visible": true,
+        "smallIcon": "ic-putall.png",
+        "description": "This activity stores multiple records in fabric ledger"
+    },
+    "ref": "github.com/dovetail-lab/fabric-chaincode/activity/putall",
+    "homepage": "http://github.com/dovetail-lab/fabric-chaincode/activity/putall",
+    "inputs": [
+        {
+            "name": "data",
+            "type": "object",
+            "display": {
+                "name": "Key-value pairs",
+                "description": "Schema definition of array of key-value pairs, e.g.,\r\n[{\r\n  \"key\": \"string\",\r\n  \"value\": {\"field1\": \"\", \"field2\": 0}\r\n}]",
+                "type": "texteditor",
+                "syntax": "json",
+                "mappable": true,
+                "visible": true
+            }
+        },
+        {
+            "name": "privateCollection",
+            "type": "string",
+            "required": false
+        },
+        {
+            "name": "compositeKeys",
+            "type": "string",
+            "display": {
+                "name": "Composite keys",
+                "description": "Define name of composite key and attributes using format index1=attr1,attr2;index2=attr1,attr2 (Note: if state key does not match the value of the last attribute of an index, the state-key will be appended to the end of the index), e.g. \"index-color=color,name;index-owner=owner,name\"",
+                "appPropertySupport": true
+            }
+        }
+    ],
+    "outputs": [
+        {
+            "name": "code",
+            "type": "integer"
+        },
+        {
+            "name": "message",
+            "type": "string"
+        },
+        {
+            "name": "count",
+            "type": "integer"
+        },
+        {
+            "name": "errors",
+            "type": "integer"
+        },
+        {
+            "name": "result",
+            "type": "object"
+        }
+    ]
+}

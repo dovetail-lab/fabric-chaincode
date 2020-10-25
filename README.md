@@ -22,6 +22,10 @@ It supports the following activities for storing and querying data on the distri
 - [Invoke Chaincode](activity/invokechaincode): Invoke a local chaincode, and returns response data from the called transaction.
 - [Cid](activity/cid): It inspects the client identification and returns the client's name, MSP, and attributes that can be used for ABAC(Attribute Based Access Control).
 
-With these extensions, Hyperledger Fabric chaincode can be designed and implemented with zero code. Refer to samples [`marble`](../samples/marble) and [`marble-private`](../samples/marble-private) for more details about implementing chaincode for Hyperledger Fabric.
+It also includes utility functions that can be used by Flogo models:
 
-To use this extension in Flogo model, you can create [`fabricExtension.zip`](../fabricExtension.zip) by using the script [`zip-fabric.sh`](../zip-fabric.sh), and then upload the zip-file to the `TIBCO Flogo® Enterprise 2.8` as an extension, and so they are available for modeling chaincode.
+- [dovetail](function/dovetail): Set of functions for demonstration.
+
+With these extensions, Hyperledger Fabric chaincode can be designed and implemented with zero code. Refer to [samples](https://github.com/dovetail-lab/fabric-samples) for more details about using these exetentions for developing Hyperledger Fabric chaincode with zero-code.
+
+To use this extension in Flogo model, you can create [`fabricExtension.zip`](../fabricExtension.zip) by using the script [`zip-fabric.sh`](../zip-fabric.sh), and then upload the zip-file to the `TIBCO Flogo® Enterprise 2.10` as an extension, and so they are available for modeling chaincode.

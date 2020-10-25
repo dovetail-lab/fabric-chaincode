@@ -1,0 +1,70 @@
+{
+    "name": "fabric-delete",
+    "version": "2.0.0",
+    "type": "flogo:activity",
+    "title": "Delete",
+    "author": "TIBCO Software Inc.",
+    "display": {
+        "category": "fabric",
+        "visible": true,
+        "smallIcon": "ic-delete.png",
+        "description": "This activity deletes data from fabric world state"
+    },
+    "ref": "github.com/dovetail-lab/fabric-chaincode/activity/delete",
+    "homepage": "http://github.com/dovetail-lab/fabric-chaincode/activity/delete",
+    "inputs": [{
+            "name": "key",
+            "type": "string",
+            "required": true
+        },
+        {
+            "name": "privateCollection",
+            "type": "string",
+            "required": false
+        },
+        {
+            "name": "keysOnly",
+            "type": "boolean",
+            "required": true,
+            "display": {
+                "name": "Delete composite keys only",
+                "description": "Delete specified composite keys only, not the state."
+            },
+            "value": false
+        },
+        {
+            "name": "compositeKeys",
+            "type": "string",
+            "display": {
+                "name": "Delete Composite keys",
+                "description": "Define name of composite key and attributes using format index1=attr1,attr2;index2=attr1,attr2 (Note: if state key does not match the value of the last attribute of an index, the state-key will be appended to the end of the index), e.g. \"index-color=color,name;index-owner=owner,name\"",
+                "appPropertySupport": true
+            }
+        }
+    ],
+    "outputs": [{
+            "name": "code",
+            "type": "integer"
+        },
+        {
+            "name": "message",
+            "type": "string"
+        },
+        {
+            "name": "key",
+            "type": "string"
+        },
+        {
+            "name": "result",
+            "type": "object",
+            "display": {
+                "name": "Deleted object definition",
+                "description": "Schema definition of the deleted object, e.g.,\r\n{\r\n  \"param1\": \"string\",\r\n  \"param2\": {\"field1\": 0}\r\n}",
+                "type": "texteditor",
+                "syntax": "json",
+                "mappable": true,
+                "visible": true
+            }
+        }
+    ]
+}
