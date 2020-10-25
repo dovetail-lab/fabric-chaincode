@@ -1,10 +1,16 @@
 {
   "name": "dovetail",
+  "version": "1.0.0",
   "type": "flogo:function",
-  "version": "0.0.1",
   "title": "Dovetail utility functions",
-  "description": "Utility functions used by Dovetail samples",
-  "homepage": "https://github.com/TIBCOSoftware/dovetail-contrib/tree/master/hyperledger-fabric/function/dovetail",
+  "author": "TIBCO Software Inc.",
+  "display": {
+    "category": "fabric-chaincode",
+    "visible": true,
+    "description": "Utility functions used by Dovetail samples"
+  },
+  "ref": "github.com/dovetail-lab/fabric-chaincode/function/dovetail",
+  "homepage": "https://github.com/dovetail-lab/fabric-chaincode/function/dovetail",
   "functions": [{
       "name": "cosmosdbAuthToken",
       "description": "Returns authorization token for Azure Cosmos DB",

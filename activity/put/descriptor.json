@@ -1,11 +1,11 @@
 {
     "name": "fabric-put",
-    "version": "2.0.0",
+    "version": "1.0.0",
     "type": "flogo:activity",
     "title": "Put",
     "author": "TIBCO Software Inc.",
     "display": {
-        "category": "fabric",
+        "category": "fabric-chaincode",
         "visible": true,
         "smallIcon": "ic-put.png",
         "description": "This activity stores data to fabric ledger"

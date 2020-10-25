@@ -1,11 +1,11 @@
 {
     "name": "fabric-invokechaincode",
-    "version": "2.0.0",
+    "version": "1.0.0",
     "type": "flogo:activity",
     "title": "Invoke Chaincode",
     "author": "TIBCO Software Inc.",
     "display": {
-        "category": "fabric",
+        "category": "fabric-chaincode",
         "visible": true,
         "smallIcon": "ic-invoke.png",
         "description": "This activity invokes a chaincode function on a fabric channel"

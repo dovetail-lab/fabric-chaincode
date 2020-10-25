@@ -1,11 +1,11 @@
 {
     "name": "fabric-cid",
-    "version": "2.0.0",
+    "version": "1.0.0",
     "type": "flogo:activity",
     "title": "Cid",
     "author": "TIBCO Software Inc.",
     "display": {
-        "category": "fabric",
+        "category": "fabric-chaincode",
         "visible": true,
         "smallIcon": "ic-cid.png",
         "description": "This activity returns requesting client ID"

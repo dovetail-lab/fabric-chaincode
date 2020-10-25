@@ -1,11 +1,11 @@
 {
     "name": "fabric-delete",
-    "version": "2.0.0",
+    "version": "1.0.0",
     "type": "flogo:activity",
     "title": "Delete",
     "author": "TIBCO Software Inc.",
     "display": {
-        "category": "fabric",
+        "category": "fabric-chaincode",
         "visible": true,
         "smallIcon": "ic-delete.png",
         "description": "This activity deletes data from fabric world state"

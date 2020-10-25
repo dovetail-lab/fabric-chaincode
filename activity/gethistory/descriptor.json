@@ -1,11 +1,11 @@
 {
     "name": "fabric-gethistory",
-    "version": "2.0.0",
+    "version": "1.0.0",
     "type": "flogo:activity",
     "title": "Get History",
     "author": "TIBCO Software Inc.",
     "display": {
-        "category": "fabric",
+        "category": "fabric-chaincode",
         "visible": true,
         "smallIcon": "ic-history.png",
         "description": "This activity fetches history of a key from fabric ledger"

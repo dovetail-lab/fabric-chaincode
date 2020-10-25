@@ -1,11 +1,11 @@
 {
     "name": "fabric-get",
-    "version": "2.0.0",
+    "version": "1.0.0",
     "type": "flogo:activity",
     "title": "Get",
     "author": "TIBCO Software Inc.",
     "display": {
-        "category": "fabric",
+        "category": "fabric-chaincode",
         "visible": true,
         "smallIcon": "ic-get.png",
         "description": "This activity fetches data by key from fabric ledger"

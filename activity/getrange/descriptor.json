@@ -1,11 +1,11 @@
 {
     "name": "fabric-getrange",
-    "version": "2.0.0",
+    "version": "1.0.0",
     "type": "flogo:activity",
     "title": "Get Range",
     "author": "TIBCO Software Inc.",
     "display": {
-        "category": "fabric",
+        "category": "fabric-chaincode",
         "visible": true,
         "smallIcon": "ic-range.png",
         "description": "This activity fetches data by range of keys from fabric ledger"

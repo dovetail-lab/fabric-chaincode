@@ -1,11 +1,11 @@
 {
     "name": "fabric-setevent",
-    "version": "2.0.0",
+    "version": "1.0.0",
     "type": "flogo:activity",
     "title": "Set Event",
     "author": "TIBCO Software Inc.",
     "display": {
-        "category": "fabric",
+        "category": "fabric-chaincode",
         "visible": true,
         "smallIcon": "ic-event.png",
         "description": "This activity sets an event on a fabric block"

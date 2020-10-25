@@ -1,11 +1,11 @@
 {
     "name": "fabric-endorsement",
-    "version": "2.0.0",
+    "version": "1.0.0",
     "type": "flogo:activity",
     "title": "Endorsement Policy",
     "author": "TIBCO Software Inc.",
     "display": {
-        "category": "fabric",
+        "category": "fabric-chaincode",
         "visible": true,
         "smallIcon": "ic-endorsement.png",
         "description": "This activity manages state-based endorsement policy for fabric"

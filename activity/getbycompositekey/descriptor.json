@@ -1,11 +1,11 @@
 {
     "name": "fabric-getbycompositekey",
-    "version": "2.0.0",
+    "version": "1.0.0",
     "type": "flogo:activity",
     "title": "Get By Composite Key",
     "author": "TIBCO Software Inc.",
     "display": {
-        "category": "fabric",
+        "category": "fabric-chaincode",
         "visible": true,
         "smallIcon": "ic-composite.png",
         "description": "This activity fetches data by composite-key from fabric ledger"
