@@ -14,7 +14,8 @@ import (
 	"github.com/project-flogo/core/trigger"
 
 	"github.com/dovetail-lab/fabric-chaincode/common"
-	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric-chaincode-go/shim"
+	"github.com/project-flogo/core/support/log"
 	jschema "github.com/xeipuuv/gojsonschema"
 )
 
@@ -25,13 +26,7 @@ const (
 	oTransient   = "transient"
 )
 
-// Create a new logger
-var log = shim.NewLogger("trigger-fabric-transaction")
-
-func init() {
-	_ = trigger.Register(&Trigger{}, &Factory{})
-	common.SetChaincodeLogLevel(log)
-}
+var logger = log.ChildLogger(log.RootLogger(), "trigger-fabric-transaction")
 
 // TriggerMap maps transaction name in trigger handler setting to the trigger,
 // so we can lookup trigger by transaction name
@@ -69,25 +64,25 @@ func (t *Factory) New(config *trigger.Config) (trigger.Trigger, error) {
 		if !ok {
 			return nil, fmt.Errorf("Trigger handler setting does not contain attribute '%s'", STransaction)
 		}
-		log.Info("set schema config for handler:", name)
+		logger.Info("set schema config for handler:", name)
 		trig.schemas[name] = hc.Schemas
 
 		if _, ok := hc.Schemas.Output[oTransient]; ok {
-			log.Info("set transient map for handler:", name)
+			logger.Info("set transient map for handler:", name)
 			trig.transientMap[name] = true
 		}
 
 		if s, err := schema.FindOrCreate(hc.Schemas.Output[oParameters]); err == nil {
-			log.Infof("schema config: %+v\n", s)
+			logger.Infof("schema config: %+v\n", s)
 			if s == nil {
-				log.Debugf("no parameters for handler %s\n", name)
+				logger.Debugf("no parameters for handler %s\n", name)
 			} else if index, err := common.OrderedParameters([]byte(s.Value())); err == nil {
 				if index != nil {
-					log.Debugf("cache parameters for handler %s: %+v\n", name, index)
+					logger.Debugf("cache parameters for handler %s: %+v\n", name, index)
 					trig.parameters[name] = index
 				}
 			} else {
-				log.Errorf("failed to calculate handler parameters: %+v", err)
+				logger.Errorf("failed to calculate handler parameters: %+v", err)
 			}
 		}
 	}
@@ -117,17 +112,17 @@ func (t *Trigger) Initialize(ctx trigger.InitContext) error {
 		}
 
 		name := setting.Name
-		log.Info("init transaction trigger:", name)
+		logger.Info("init transaction trigger:", name)
 		_, ok := triggerMap[name]
 		if ok {
-			log.Warningf("transaction name %s used by multiple trigger handlers, only the last handler is effective", name)
+			logger.Warnf("transaction name %s used by multiple trigger handlers, only the last handler is effective", name)
 		}
 		triggerMap[name] = t
 		t.handlers[name] = handler
 
 		// verify validation setting, value is not used
 		validate := setting.Validation
-		log.Info("validate output:", validate)
+		logger.Info("validate output:", validate)
 	}
 	return nil
 }
@@ -146,7 +141,7 @@ func (t *Trigger) Stop() error {
 // Invoke starts the trigger and invokes the action registered in the handler,
 // and returns status code and result as JSON string
 func (t *Trigger) Invoke(stub shim.ChaincodeStubInterface, fn string, args []string) (int, string, error) {
-	log.Debugf("fabric.Trigger invokes fn %s with args %+v", fn, args)
+	logger.Debugf("fabric.Trigger invokes fn %s with args %+v", fn, args)
 
 	handler, ok := t.handlers[fn]
 	if !ok {
@@ -161,10 +156,10 @@ func (t *Trigger) Invoke(stub shim.ChaincodeStubInterface, fn string, args []str
 		if err != nil {
 			return 400, "", err
 		}
-		if log.IsEnabledFor(shim.LogDebug) {
+		if logger.DebugEnabled() {
 			// debug flow data
 			paramBytes, _ := json.Marshal(paramData)
-			log.Debugf("trigger parameters: %s", string(paramBytes))
+			logger.Debugf("trigger parameters: %s", string(paramBytes))
 		}
 
 		// set trigger parameters
@@ -177,10 +172,10 @@ func (t *Trigger) Invoke(stub shim.ChaincodeStubInterface, fn string, args []str
 		if err != nil {
 			return 400, "", err
 		}
-		if log.IsEnabledFor(shim.LogDebug) {
+		if logger.DebugEnabled() {
 			// debug flow data
 			transBytes, _ := json.Marshal(transData)
-			log.Debugf("trigger transient attributes: %s", string(transBytes))
+			logger.Debugf("trigger transient attributes: %s", string(transBytes))
 		}
 
 		// set trigger transient attributes
@@ -194,10 +189,10 @@ func (t *Trigger) Invoke(stub shim.ChaincodeStubInterface, fn string, args []str
 	}
 
 	// execute flogo flow
-	log.Debugf("flogo flow started transaction %s with timestamp %s", triggerData.TxID, triggerData.TxTime)
+	logger.Debugf("flogo flow started transaction %s with timestamp %s", triggerData.TxID, triggerData.TxTime)
 	results, err := handler.Handle(context.Background(), triggerData.ToMap())
 	if err != nil {
-		log.Errorf("flogo flow returned error: %+v", err)
+		logger.Errorf("flogo flow returned error: %+v", err)
 		return 500, "", err
 	}
 
@@ -207,11 +202,11 @@ func (t *Trigger) Invoke(stub shim.ChaincodeStubInterface, fn string, args []str
 	}
 
 	if reply.Status != 200 {
-		log.Infof("flogo flow returned status %d with message %s", reply.Status, reply.Message)
+		logger.Infof("flogo flow returned status %d with message %s", reply.Status, reply.Message)
 		return reply.Status, reply.Message, nil
 	}
 	if reply.Returns == nil {
-		log.Info("flogo flow did not return any data")
+		logger.Info("flogo flow did not return any data")
 		if reply.Message != "" {
 			return 300, reply.Message, nil
 		}
@@ -220,10 +215,10 @@ func (t *Trigger) Invoke(stub shim.ChaincodeStubInterface, fn string, args []str
 
 	replyData, err := json.Marshal(reply.Returns)
 	if err != nil {
-		log.Errorf("failed to serialize reply: %+v", err)
+		logger.Errorf("failed to serialize reply: %+v", err)
 		return 500, "", err
 	}
-	log.Debugf("flogo flow returned data of type %T: %s", reply.Returns, string(replyData))
+	logger.Debugf("flogo flow returned data of type %T: %s", reply.Returns, string(replyData))
 	return 200, string(replyData), nil
 }
 
@@ -233,16 +228,16 @@ func prepareTransient(stub shim.ChaincodeStubInterface) (map[string]interface{},
 	transMap, err := stub.GetTransient()
 	if err != nil {
 		// cannot find transient attributes
-		log.Warningf("no transient map: %+v", err)
+		logger.Warnf("no transient map: %+v", err)
 		return transient, nil
 	}
 	for k, v := range transMap {
 		var obj interface{}
 		if err := json.Unmarshal(v, &obj); err == nil {
-			log.Debugf("received transient data, name: %s, value: %+v", k, obj)
+			logger.Debugf("received transient data, name: %s, value: %+v", k, obj)
 			transient[k] = obj
 		} else {
-			log.Warningf("failed to unmarshal transient data, name: %s, error: %+v", k, err)
+			logger.Warnf("failed to unmarshal transient data, name: %s, error: %+v", k, err)
 		}
 	}
 	return transient, nil
@@ -250,7 +245,7 @@ func prepareTransient(stub shim.ChaincodeStubInterface) (map[string]interface{},
 
 // construct trigger output parameters for specified parameter index, and values of the parameters
 func prepareParameters(paramIndex []common.ParameterIndex, values []string) (map[string]interface{}, error) {
-	log.Debugf("prepare parameters %+v values %+v", paramIndex, values)
+	logger.Debugf("prepare parameters %+v values %+v", paramIndex, values)
 	if paramIndex == nil && len(values) > 0 {
 		// unknown parameter schema
 		return nil, errors.New("parameter schema is not defined")
@@ -284,20 +279,20 @@ func unmarshalString(data, jsonType, name string) interface{} {
 	case jschema.TYPE_ARRAY:
 		var result []interface{}
 		if err := json.Unmarshal([]byte(data), &result); err != nil {
-			log.Warningf("failed to parse parameter %s as JSON array: data '%s' error %+v", name, data, err)
+			logger.Warnf("failed to parse parameter %s as JSON array: data '%s' error %+v", name, data, err)
 		}
 		return result
 	case jschema.TYPE_BOOLEAN:
 		b, err := strconv.ParseBool(s)
 		if err != nil {
-			log.Warningf("failed to convert parameter %s to boolean: data '%s' error %+v", name, data, err)
+			logger.Warnf("failed to convert parameter %s to boolean: data '%s' error %+v", name, data, err)
 			return false
 		}
 		return b
 	case jschema.TYPE_INTEGER:
 		i, err := strconv.Atoi(s)
 		if err != nil {
-			log.Warningf("failed to convert parameter %s to integer: data '%s' error %+v", name, data, err)
+			logger.Warnf("failed to convert parameter %s to integer: data '%s' error %+v", name, data, err)
 			return 0
 		}
 		return i
@@ -305,21 +300,21 @@ func unmarshalString(data, jsonType, name string) interface{} {
 		if !strings.Contains(s, ".") {
 			i, err := strconv.Atoi(s)
 			if err != nil {
-				log.Warningf("failed to convert parameter %s to integer: data '%s' error %+v", name, data, err)
+				logger.Warnf("failed to convert parameter %s to integer: data '%s' error %+v", name, data, err)
 				return 0
 			}
 			return i
 		}
 		n, err := strconv.ParseFloat(s, 64)
 		if err != nil {
-			log.Warningf("failed to convert parameter %s to float: data '%s' error %+v", name, data, err)
+			logger.Warnf("failed to convert parameter %s to float: data '%s' error %+v", name, data, err)
 			return 0.0
 		}
 		return n
 	default:
 		var result map[string]interface{}
 		if err := json.Unmarshal([]byte(data), &result); err != nil {
-			log.Warningf("failed to convert parameter %s to object: data '%s' error %+v", name, data, err)
+			logger.Warnf("failed to convert parameter %s to object: data '%s' error %+v", name, data, err)
 		}
 		return result
 	}

@@ -5,19 +5,19 @@ import (
 	"fmt"
 
 	"github.com/dovetail-lab/fabric-chaincode/common"
-	"github.com/hyperledger/fabric/core/chaincode/shim"
-	pb "github.com/hyperledger/fabric/protos/peer"
+	"github.com/hyperledger/fabric-chaincode-go/shim"
+	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/pkg/errors"
 	"github.com/project-flogo/core/activity"
+	"github.com/project-flogo/core/support/log"
 )
 
 // Create a new logger
-var log = shim.NewLogger("activity-fabric-getrange")
+var logger = log.ChildLogger(log.RootLogger(), "activity-fabric-getrange")
 
 var activityMd = activity.ToMetadata(&Settings{}, &Input{}, &Output{})
 
 func init() {
-	common.SetChaincodeLogLevel(log)
 	_ = activity.Register(&Activity{}, New)
 }
 
@@ -48,18 +48,18 @@ func (a *Activity) Eval(ctx activity.Context) (done bool, err error) {
 		ctx.SetOutputObject(output)
 		return false, errors.New(output.Message)
 	}
-	log.Debugf("start key: %s\n", input.StartKey)
+	logger.Debugf("start key: %s\n", input.StartKey)
 	if input.EndKey == "" {
 		output := &Output{Code: 400, Message: "end key is not specified"}
 		ctx.SetOutputObject(output)
 		return false, errors.New(output.Message)
 	}
-	log.Debugf("end key: %s\n", input.EndKey)
+	logger.Debugf("end key: %s\n", input.EndKey)
 
 	// get chaincode stub
 	stub, err := common.GetChaincodeStub(ctx)
 	if err != nil || stub == nil {
-		log.Errorf("failed to retrieve fabric stub: %+v\n", err)
+		logger.Errorf("failed to retrieve fabric stub: %+v\n", err)
 		output := &Output{Code: 500, Message: err.Error()}
 		ctx.SetOutputObject(output)
 		return false, err
@@ -85,11 +85,11 @@ func retrievePrivateRange(ctx activity.Context, ccshim shim.ChaincodeStubInterfa
 
 	// retrieve private data range [startKey, endKey)
 	if pageSize > 0 {
-		log.Infof("private data query does not support pagination, so ignore specified page size %d and bookmark %s\n", pageSize, bookmark)
+		logger.Infof("private data query does not support pagination, so ignore specified page size %d and bookmark %s\n", pageSize, bookmark)
 	}
 	resultIterator, err := ccshim.GetPrivateDataByRange(input.PrivateCollection, input.StartKey, input.EndKey)
 	if err != nil {
-		log.Errorf("failed to retrieve data range [%s, %s) from private collection %s: %+v\n", input.StartKey, input.EndKey, input.PrivateCollection, err)
+		logger.Errorf("failed to retrieve data range [%s, %s) from private collection %s: %+v\n", input.StartKey, input.EndKey, input.PrivateCollection, err)
 		output := &Output{Code: 500, Message: fmt.Sprintf("failed to retrieve data range [%s, %s) from private collection %s", input.StartKey, input.EndKey, input.PrivateCollection)}
 		ctx.SetOutputObject(output)
 		return false, errors.Wrapf(err, output.Message)
@@ -98,23 +98,23 @@ func retrievePrivateRange(ctx activity.Context, ccshim shim.ChaincodeStubInterfa
 
 	jsonBytes, err := common.ConstructQueryResponse(resultIterator, input.PrivateCollection, false, nil)
 	if err != nil {
-		log.Errorf("failed to collect result from iterator: %+v\n", err)
+		logger.Errorf("failed to collect result from iterator: %+v\n", err)
 		output := &Output{Code: 500, Message: "failed to collect result from iterator"}
 		ctx.SetOutputObject(output)
 		return false, errors.Wrapf(err, output.Message)
 	}
 
 	if jsonBytes == nil {
-		log.Infof("no data found in key range [%s, %s) from private collection %s\n", input.StartKey, input.EndKey, input.PrivateCollection)
+		logger.Infof("no data found in key range [%s, %s) from private collection %s\n", input.StartKey, input.EndKey, input.PrivateCollection)
 		output := &Output{Code: 300, Message: fmt.Sprintf("no data found in key range [%s, %s) from private collection %s", input.StartKey, input.EndKey, input.PrivateCollection)}
 		ctx.SetOutputObject(output)
 		return true, nil
 	}
-	log.Debugf("retrieved data range from private collection %s: %s\n", input.PrivateCollection, string(jsonBytes))
+	logger.Debugf("retrieved data range from private collection %s: %s\n", input.PrivateCollection, string(jsonBytes))
 
 	var value []interface{}
 	if err := json.Unmarshal(jsonBytes, &value); err != nil {
-		log.Errorf("failed to parse JSON data: %+v\n", err)
+		logger.Errorf("failed to parse JSON data: %+v\n", err)
 		output := &Output{Code: 500, Message: fmt.Sprintf("failed to parse JSON data: %s", string(jsonBytes))}
 		ctx.SetOutputObject(output)
 		return false, errors.Wrapf(err, output.Message)
@@ -136,9 +136,9 @@ func retrieveRange(ctx activity.Context, ccshim shim.ChaincodeStubInterface, inp
 	bookmark := ""
 	if input.UsePagination {
 		pageSize = input.PageSize
-		log.Debug("pageSize:", pageSize)
+		logger.Debug("pageSize:", pageSize)
 		bookmark = input.Start
-		log.Debug("bookmark:", bookmark)
+		logger.Debug("bookmark:", bookmark)
 	}
 
 	// retrieve data range [startKey, endKey)
@@ -147,14 +147,14 @@ func retrieveRange(ctx activity.Context, ccshim shim.ChaincodeStubInterface, inp
 	var err error
 	if pageSize > 0 {
 		if resultIterator, resultMetadata, err = ccshim.GetStateByRangeWithPagination(input.StartKey, input.EndKey, pageSize, bookmark); err != nil {
-			log.Errorf("failed to retrieve data range [%s, %s) with page size %d: %+v\n", input.StartKey, input.EndKey, pageSize, err)
+			logger.Errorf("failed to retrieve data range [%s, %s) with page size %d: %+v\n", input.StartKey, input.EndKey, pageSize, err)
 			output := &Output{Code: 500, Message: fmt.Sprintf("failed to retrieve data range [%s, %s) with page size %d", input.StartKey, input.EndKey, pageSize)}
 			ctx.SetOutputObject(output)
 			return false, errors.Wrapf(err, output.Message)
 		}
 	} else {
 		if resultIterator, err = ccshim.GetStateByRange(input.StartKey, input.EndKey); err != nil {
-			log.Errorf("failed to retrieve data range [%s, %s): %+v\n", input.StartKey, input.EndKey, err)
+			logger.Errorf("failed to retrieve data range [%s, %s): %+v\n", input.StartKey, input.EndKey, err)
 			output := &Output{Code: 500, Message: fmt.Sprintf("failed to retrieve data range [%s, %s)", input.StartKey, input.EndKey)}
 			ctx.SetOutputObject(output)
 			return false, errors.Wrapf(err, output.Message)
@@ -164,30 +164,30 @@ func retrieveRange(ctx activity.Context, ccshim shim.ChaincodeStubInterface, inp
 
 	jsonBytes, err := common.ConstructQueryResponse(resultIterator, "", false, nil)
 	if err != nil {
-		log.Errorf("failed to collect result from iterator: %+v\n", err)
+		logger.Errorf("failed to collect result from iterator: %+v\n", err)
 		output := &Output{Code: 500, Message: "failed to collect result from iterator"}
 		ctx.SetOutputObject(output)
 		return false, errors.Wrapf(err, output.Message)
 	}
 
 	if jsonBytes == nil {
-		log.Infof("no data found in key range [%s, %s)\n", input.StartKey, input.EndKey)
+		logger.Infof("no data found in key range [%s, %s)\n", input.StartKey, input.EndKey)
 		output := &Output{Code: 300, Message: fmt.Sprintf("no data found in key range [%s, %s)", input.StartKey, input.EndKey)}
 		ctx.SetOutputObject(output)
 		return true, nil
 	}
-	log.Debugf("retrieved data from ledger: %s\n", string(jsonBytes))
+	logger.Debugf("retrieved data from ledger: %s\n", string(jsonBytes))
 
 	var value []interface{}
 	if err := json.Unmarshal(jsonBytes, &value); err != nil {
-		log.Errorf("failed to parse JSON data: %+v\n", err)
+		logger.Errorf("failed to parse JSON data: %+v\n", err)
 		output := &Output{Code: 500, Message: fmt.Sprintf("failed to parse JSON data: %s", string(jsonBytes))}
 		ctx.SetOutputObject(output)
 		return false, errors.Wrapf(err, output.Message)
 	}
 
 	if resultMetadata != nil {
-		log.Debugf("set pagination metadata: count=%d, bookmark=%s\n", resultMetadata.FetchedRecordsCount, resultMetadata.Bookmark)
+		logger.Debugf("set pagination metadata: count=%d, bookmark=%s\n", resultMetadata.FetchedRecordsCount, resultMetadata.Bookmark)
 		output := &Output{Code: 200,
 			Message:  fmt.Sprintf("retrieved data in key range [%s, %s): %s", input.StartKey, input.EndKey, string(jsonBytes)),
 			Count:    int(resultMetadata.FetchedRecordsCount),

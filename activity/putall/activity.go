@@ -6,18 +6,18 @@ import (
 	"strings"
 
 	"github.com/dovetail-lab/fabric-chaincode/common"
-	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric-chaincode-go/shim"
 	"github.com/pkg/errors"
 	"github.com/project-flogo/core/activity"
+	"github.com/project-flogo/core/support/log"
 )
 
 // Create a new logger
-var log = shim.NewLogger("activity-fabric-putall")
+var logger = log.ChildLogger(log.RootLogger(), "activity-fabric-putall")
 
 var activityMd = activity.ToMetadata(&Settings{}, &Input{}, &Output{})
 
 func init() {
-	common.SetChaincodeLogLevel(log)
 	_ = activity.Register(&Activity{}, New)
 }
 
@@ -44,17 +44,17 @@ func (a *Activity) Eval(ctx activity.Context) (done bool, err error) {
 	}
 
 	if input.StateData == nil {
-		log.Errorf("input data is nil\n")
+		logger.Errorf("input data is nil\n")
 		output := &Output{Code: 400, Message: "input data is nil"}
 		ctx.SetOutputObject(output)
 		return false, errors.New(output.Message)
 	}
-	log.Debugf("input value type %T: %+v\n", input.StateData, input.StateData)
+	logger.Debugf("input value type %T: %+v\n", input.StateData, input.StateData)
 
 	// get chaincode stub
 	stub, err := common.GetChaincodeStub(ctx)
 	if err != nil || stub == nil {
-		log.Errorf("failed to retrieve fabric stub: %+v\n", err)
+		logger.Errorf("failed to retrieve fabric stub: %+v\n", err)
 		output := &Output{Code: 500, Message: err.Error()}
 		ctx.SetOutputObject(output)
 		return false, err
@@ -110,7 +110,7 @@ func (a *Activity) Eval(ctx activity.Context) (done bool, err error) {
 		return false, errors.New(output.Message)
 	}
 	// return 200 if no errors
-	log.Debugf("set activity output result: %+v\n", resultValue)
+	logger.Debugf("set activity output result: %+v\n", resultValue)
 	output := &Output{
 		Code:    200,
 		Message: fmt.Sprintf("stored data on ledger: %+v", resultValue),
@@ -125,16 +125,16 @@ func (a *Activity) Eval(ctx activity.Context) (done bool, err error) {
 func storePrivateData(ccshim shim.ChaincodeStubInterface, collection string, compositeKeyDefs string, key string, value interface{}) error {
 	jsonBytes, err := json.Marshal(value)
 	if err != nil {
-		log.Errorf("failed to marshal value '%+v', error: %+v\n", value, err)
+		logger.Errorf("failed to marshal value '%+v', error: %+v\n", value, err)
 		return errors.Wrapf(err, "failed to marshal value: %+v", value)
 	}
 
 	// store data on a private collection
 	if err := ccshim.PutPrivateData(collection, key, jsonBytes); err != nil {
-		log.Errorf("failed to store data in private collection %s: %+v\n", collection, err)
+		logger.Errorf("failed to store data in private collection %s: %+v\n", collection, err)
 		return errors.Wrapf(err, "failed to store data in private collection %s", collection)
 	}
-	log.Debugf("stored in private collection %s, data: %s\n", collection, string(jsonBytes))
+	logger.Debugf("stored in private collection %s, data: %s\n", collection, string(jsonBytes))
 
 	// store composite keys if required
 	if len(compositeKeyDefs) == 0 {
@@ -145,9 +145,9 @@ func storePrivateData(ccshim shim.ChaincodeStubInterface, collection string, com
 		for _, k := range compositeKeys {
 			cv := []byte{0x00}
 			if err := ccshim.PutPrivateData(collection, k, cv); err != nil {
-				log.Errorf("failed to store composite key %s on collection %s: %+v\n", k, collection, err)
+				logger.Errorf("failed to store composite key %s on collection %s: %+v\n", k, collection, err)
 			} else {
-				log.Debugf("stored composite key %s on collection %s\n", k, collection)
+				logger.Debugf("stored composite key %s on collection %s\n", k, collection)
 			}
 		}
 	}
@@ -157,15 +157,15 @@ func storePrivateData(ccshim shim.ChaincodeStubInterface, collection string, com
 func storeData(ccshim shim.ChaincodeStubInterface, compositeKeyDefs string, key string, value interface{}) error {
 	jsonBytes, err := json.Marshal(value)
 	if err != nil {
-		log.Errorf("failed to marshal value '%+v', error: %+v\n", value, err)
+		logger.Errorf("failed to marshal value '%+v', error: %+v\n", value, err)
 		return errors.Wrapf(err, "failed to marshal value: %+v", value)
 	}
 	// store data on the ledger
 	if err := ccshim.PutState(key, jsonBytes); err != nil {
-		log.Errorf("failed to store data on ledger: %+v\n", err)
+		logger.Errorf("failed to store data on ledger: %+v\n", err)
 		return errors.Errorf("failed to store data on ledger: %+v", err)
 	}
-	log.Debugf("stored data on ledger: %s\n", string(jsonBytes))
+	logger.Debugf("stored data on ledger: %s\n", string(jsonBytes))
 
 	// store composite keys if required
 	if len(compositeKeyDefs) == 0 {
@@ -176,9 +176,9 @@ func storeData(ccshim shim.ChaincodeStubInterface, compositeKeyDefs string, key 
 		for _, k := range compositeKeys {
 			cv := []byte{0x00}
 			if err := ccshim.PutState(k, cv); err != nil {
-				log.Errorf("failed to store composite key %s: %+v\n", k, err)
+				logger.Errorf("failed to store composite key %s: %+v\n", k, err)
 			} else {
-				log.Debugf("stored composite key %s\n", k)
+				logger.Debugf("stored composite key %s\n", k)
 			}
 		}
 	}

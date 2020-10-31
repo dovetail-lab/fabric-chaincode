@@ -4,19 +4,19 @@ import (
 	"encoding/json"
 
 	"github.com/dovetail-lab/fabric-chaincode/common"
-	"github.com/hyperledger/fabric/core/chaincode/shim"
-	ci "github.com/hyperledger/fabric/core/chaincode/shim/ext/cid"
+	ci "github.com/hyperledger/fabric-chaincode-go/pkg/cid"
+	"github.com/hyperledger/fabric-chaincode-go/shim"
 	"github.com/pkg/errors"
 	"github.com/project-flogo/core/activity"
+	"github.com/project-flogo/core/support/log"
 )
 
 // Create a new logger
-var log = shim.NewLogger("activity-fabric-cid")
+var logger = log.ChildLogger(log.RootLogger(), "activity-fabric-cid")
 
 var activityMd = activity.ToMetadata(&Settings{}, &Input{}, &Output{})
 
 func init() {
-	common.SetChaincodeLogLevel(log)
 	_ = activity.Register(&Activity{}, New)
 }
 
@@ -40,7 +40,7 @@ func (a *Activity) Eval(ctx activity.Context) (done bool, err error) {
 	// get chaincode stub
 	stub, err := common.GetChaincodeStub(ctx)
 	if err != nil || stub == nil {
-		log.Errorf("failed to retrieve fabric stub: %+v\n", err)
+		logger.Errorf("failed to retrieve fabric stub: %+v\n", err)
 		output := &Output{Code: 500, Message: err.Error()}
 		ctx.SetOutputObject(output)
 		return false, err
@@ -54,7 +54,7 @@ func retrieveCid(ctx activity.Context, ccshim shim.ChaincodeStubInterface) (bool
 	// get client identity
 	c, err := ci.New(ccshim)
 	if err != nil {
-		log.Errorf("failed to extract client identity from stub: %+v\n", err)
+		logger.Errorf("failed to extract client identity from stub: %+v\n", err)
 		output := &Output{Code: 500, Message: "failed to extract client identity from stub"}
 		ctx.SetOutputObject(output)
 		return false, errors.Wrapf(err, output.Message)
@@ -64,29 +64,29 @@ func retrieveCid(ctx activity.Context, ccshim shim.ChaincodeStubInterface) (bool
 	// retrieve data from client identity
 	id, err := c.GetID()
 	if err != nil {
-		log.Errorf("failed to retrieve client ID: %+v\n", err)
+		logger.Errorf("failed to retrieve client ID: %+v\n", err)
 		output := &Output{Code: 500, Message: "failed to retrieve client ID"}
 		ctx.SetOutputObject(output)
 		return false, errors.Wrapf(err, output.Message)
 	}
 	mspid, err := c.GetMSPID()
 	if err != nil {
-		log.Errorf("failed to retrieve client MSPID: %+v\n", err)
+		logger.Errorf("failed to retrieve client MSPID: %+v\n", err)
 		output := &Output{Code: 500, Message: "failed to retrieve client MSPID"}
 		ctx.SetOutputObject(output)
 		return false, errors.Wrapf(err, output.Message)
 	}
-	log.Debug("client MSPID:", mspid)
+	logger.Debug("client MSPID:", mspid)
 
 	cert, err := c.GetX509Certificate()
 	if err != nil {
-		log.Errorf("failed to retrieve client certificate: %+v\n", err)
+		logger.Errorf("failed to retrieve client certificate: %+v\n", err)
 		output := &Output{Code: 500, Message: "failed to retrieve client certificate"}
 		ctx.SetOutputObject(output)
 		return false, errors.Wrapf(err, output.Message)
 	}
 	name := cert.Subject.CommonName
-	log.Debug("client subject cn:", name)
+	logger.Debug("client subject cn:", name)
 
 	attrs := make(map[string]string)
 	if schema, err := common.GetActivityOutputSchema(ctx, "attrs"); err == nil {
@@ -94,11 +94,11 @@ func retrieveCid(ctx activity.Context, ccshim shim.ChaincodeStubInterface) (bool
 		for k := range attrs {
 			v, ok, err := c.GetAttributeValue(k)
 			if err != nil {
-				log.Errorf("failed to retrieve attribute %s: %+v\n", k, err)
+				logger.Errorf("failed to retrieve attribute %s: %+v\n", k, err)
 			} else if !ok {
-				log.Debugf("attribute %s is not found", k)
+				logger.Debugf("attribute %s is not found", k)
 			} else {
-				log.Debugf("found attribute %s = %s", k, v)
+				logger.Debugf("found attribute %s = %s", k, v)
 				attrs[k] = v
 			}
 		}
@@ -112,13 +112,13 @@ func retrieveCid(ctx activity.Context, ccshim shim.ChaincodeStubInterface) (bool
 	}
 	msgBytes, err := json.Marshal(output)
 	if err != nil {
-		log.Errorf("failed to serialize JSON output: %+v\n", err)
+		logger.Errorf("failed to serialize JSON output: %+v\n", err)
 		output := &Output{Code: 500, Message: "failed to serialize JSON output"}
 		ctx.SetOutputObject(output)
 		return false, errors.Wrapf(err, output.Message)
 	}
 	output.Message = string(msgBytes)
-	log.Info("CID content:", output.Message)
+	logger.Info("CID content:", output.Message)
 
 	ctx.SetOutputObject(output)
 	return true, nil
@@ -132,18 +132,18 @@ func getCidAttributeSpec(metadata string) (map[string]string, error) {
 		} `json:"properties"`
 	}
 	if err := json.Unmarshal([]byte(metadata), &objectProps); err != nil {
-		log.Errorf("failed to extract properties from metadata: %+v", err)
+		logger.Errorf("failed to extract properties from metadata: %+v", err)
 		return nil, err
 	}
 	if objectProps.Props == nil {
-		log.Debug("no attribute specified in metadata %s\n", metadata)
+		logger.Debug("no attribute specified in metadata %s\n", metadata)
 		return nil, nil
 	}
 
 	// collect object property name and types
 	attrs := make(map[string]string)
 	for k, v := range objectProps.Props {
-		log.Debugf("CID attribute %s type %s\n", k, v.FieldType)
+		logger.Debugf("CID attribute %s type %s\n", k, v.FieldType)
 		attrs[k] = v.FieldType
 	}
 	return attrs, nil

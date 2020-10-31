@@ -6,20 +6,20 @@ import (
 
 	"github.com/dovetail-lab/fabric-chaincode/common"
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/common/cauthdsl"
-	"github.com/hyperledger/fabric/core/chaincode/shim"
-	"github.com/hyperledger/fabric/core/chaincode/shim/ext/statebased"
+	"github.com/hyperledger/fabric-chaincode-go/pkg/statebased"
+	"github.com/hyperledger/fabric-chaincode-go/shim"
+	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/pkg/errors"
 	"github.com/project-flogo/core/activity"
+	"github.com/project-flogo/core/support/log"
 )
 
 // Create a new logger
-var log = shim.NewLogger("activity-fabric-endorsement")
+var logger = log.ChildLogger(log.RootLogger(), "activity-fabric-endorsement")
 
 var activityMd = activity.ToMetadata(&Settings{}, &Input{}, &Output{})
 
 func init() {
-	common.SetChaincodeLogLevel(log)
 	_ = activity.Register(&Activity{}, New)
 }
 
@@ -46,24 +46,24 @@ func (a *Activity) Eval(ctx activity.Context) (done bool, err error) {
 	}
 
 	if input.StateKey == "" {
-		log.Error("state key is not specified\n")
+		logger.Error("state key is not specified\n")
 		output := &Output{Code: 400, Message: "state key is not specified"}
 		ctx.SetOutputObject(output)
 		return false, errors.New(output.Message)
 	}
-	log.Debugf("state key: %s\n", input.StateKey)
+	logger.Debugf("state key: %s\n", input.StateKey)
 	if input.Operation == "" {
-		log.Error("operation is not specified\n")
+		logger.Error("operation is not specified\n")
 		output := &Output{Code: 400, Message: "operation is not specified"}
 		ctx.SetOutputObject(output)
 		return false, errors.New(output.Message)
 	}
-	log.Debugf("operation: %s\n", input.Operation)
+	logger.Debugf("operation: %s\n", input.Operation)
 
 	// get chaincode stub
 	stub, err := common.GetChaincodeStub(ctx)
 	if err != nil || stub == nil {
-		log.Errorf("failed to retrieve fabric stub: %+v\n", err)
+		logger.Errorf("failed to retrieve fabric stub: %+v\n", err)
 		output := &Output{Code: 500, Message: err.Error()}
 		ctx.SetOutputObject(output)
 		return false, err
@@ -82,7 +82,7 @@ func setPrivatePolicy(ctx activity.Context, ccshim shim.ChaincodeStubInterface, 
 	// set endorsement policy on a private collection
 	ep, err := ccshim.GetPrivateDataValidationParameter(input.PrivateCollection, input.StateKey)
 	if err != nil {
-		log.Errorf("failed to retrieve policy for private collection %s: %+v\n", input.PrivateCollection, err)
+		logger.Errorf("failed to retrieve policy for private collection %s: %+v\n", input.PrivateCollection, err)
 		output := &Output{Code: 500, Message: fmt.Sprintf("failed to retrieve policy for private collection %s", input.PrivateCollection)}
 		ctx.SetOutputObject(output)
 		return false, errors.Wrapf(err, output.Message)
@@ -98,7 +98,7 @@ func setPrivatePolicy(ctx activity.Context, ccshim shim.ChaincodeStubInterface, 
 	if input.Operation != "LIST" {
 		epBytes, err := stateEP.Policy()
 		if err != nil {
-			log.Errorf("failed to marshal policy: %+v\n", err)
+			logger.Errorf("failed to marshal policy: %+v\n", err)
 			output := &Output{Code: 500, Message: "failed to marshal policy"}
 			ctx.SetOutputObject(output)
 			return false, errors.Wrapf(err, output.Message)
@@ -106,7 +106,7 @@ func setPrivatePolicy(ctx activity.Context, ccshim shim.ChaincodeStubInterface, 
 
 		// update endorsement policy for key
 		if err := ccshim.SetPrivateDataValidationParameter(input.PrivateCollection, input.StateKey, epBytes); err != nil {
-			log.Errorf("failed to set policy on private collecton %s: %+v\n", input.PrivateCollection, err)
+			logger.Errorf("failed to set policy on private collecton %s: %+v\n", input.PrivateCollection, err)
 			output := &Output{Code: 500, Message: fmt.Sprintf("failed to set policy on private collecton %s", input.PrivateCollection)}
 			ctx.SetOutputObject(output)
 			return false, errors.Wrapf(err, output.Message)
@@ -138,7 +138,7 @@ func getUpdatedPolicy(ctx activity.Context, ep []byte, input *Input) (statebased
 	case "SET":
 		return createNewPolicy(input.Policy)
 	default:
-		log.Errorf("operation %s is not supported", input.Operation)
+		logger.Errorf("operation %s is not supported", input.Operation)
 		return nil, errors.Errorf("operation %s is not supported", input.Operation)
 	}
 }
@@ -146,17 +146,17 @@ func getUpdatedPolicy(ctx activity.Context, ep []byte, input *Input) (statebased
 func createNewPolicy(policy string) (statebased.KeyEndorsementPolicy, error) {
 	// create new policy from policy string
 	if policy == "" {
-		log.Errorf("policy is not specified for SET operation\n")
+		logger.Errorf("policy is not specified for SET operation\n")
 		return nil, errors.New("policy is not specified for SET operation")
 	}
-	envelope, err := cauthdsl.FromString(policy)
+	envelope, err := policydsl.FromString(policy)
 	if err != nil {
-		log.Errorf("failed to parse policy string %s: %+v\n", policy, err)
+		logger.Errorf("failed to parse policy string %s: %+v\n", policy, err)
 		return nil, errors.Wrapf(err, "failed to parse policy string %s", policy)
 	}
 	epBytes, err := proto.Marshal(envelope)
 	if err != nil {
-		log.Errorf("failed to marshal signature policy: %+v\n", err)
+		logger.Errorf("failed to marshal signature policy: %+v\n", err)
 		return nil, errors.Wrapf(err, "failed to marshal signature policy")
 	}
 	return statebased.NewStateEP(epBytes)
@@ -165,7 +165,7 @@ func createNewPolicy(policy string) (statebased.KeyEndorsementPolicy, error) {
 func deleteOrgsFromPolicy(ctx activity.Context, ep []byte, input *Input) (statebased.KeyEndorsementPolicy, error) {
 	stateEP, err := statebased.NewStateEP(ep)
 	if err != nil {
-		log.Errorf("failed to construct policy from channel default: %+v\n", err)
+		logger.Errorf("failed to construct policy from channel default: %+v\n", err)
 		return nil, err
 	}
 	orgs, err := getOrganizations(input.Organizations)
@@ -179,7 +179,7 @@ func deleteOrgsFromPolicy(ctx activity.Context, ep []byte, input *Input) (stateb
 func addOrgsToPolicy(ctx activity.Context, ep []byte, input *Input) (statebased.KeyEndorsementPolicy, error) {
 	stateEP, err := statebased.NewStateEP(ep)
 	if err != nil {
-		log.Errorf("failed to construct policy from channel default: %+v\n", err)
+		logger.Errorf("failed to construct policy from channel default: %+v\n", err)
 		return nil, err
 	}
 	orgs, err := getOrganizations(input.Organizations)
@@ -187,7 +187,7 @@ func addOrgsToPolicy(ctx activity.Context, ep []byte, input *Input) (statebased.
 		return nil, err
 	}
 	if input.Role == "" {
-		log.Errorf("role is not specified for Add operation\n")
+		logger.Errorf("role is not specified for Add operation\n")
 		return nil, errors.New("role is not specified for Add operation")
 	}
 	err = stateEP.AddOrgs(statebased.RoleType(input.Role), orgs...)
@@ -196,7 +196,7 @@ func addOrgsToPolicy(ctx activity.Context, ep []byte, input *Input) (statebased.
 
 func getOrganizations(orgs string) ([]string, error) {
 	if orgs == "" {
-		log.Errorf("organization is not specified\n")
+		logger.Errorf("organization is not specified\n")
 		return nil, errors.New("organization is not specified")
 	}
 	orgArray := strings.Split(orgs, ",")
@@ -210,7 +210,7 @@ func setPolicy(ctx activity.Context, ccshim shim.ChaincodeStubInterface, input *
 	// set endorsement policy for a key
 	ep, err := ccshim.GetStateValidationParameter(input.StateKey)
 	if err != nil {
-		log.Errorf("failed to retrieve policy for key %s: %+v\n", input.StateKey, err)
+		logger.Errorf("failed to retrieve policy for key %s: %+v\n", input.StateKey, err)
 		output := &Output{Code: 500, Message: fmt.Sprintf("failed to retrieve policy for key %s", input.StateKey)}
 		ctx.SetOutputObject(output)
 		return false, errors.Wrapf(err, output.Message)
@@ -226,7 +226,7 @@ func setPolicy(ctx activity.Context, ccshim shim.ChaincodeStubInterface, input *
 	if input.Operation != "LIST" {
 		epBytes, err := stateEP.Policy()
 		if err != nil {
-			log.Errorf("failed to marshal policy: %+v\n", err)
+			logger.Errorf("failed to marshal policy: %+v\n", err)
 			output := &Output{Code: 500, Message: "failed to marshal policy"}
 			ctx.SetOutputObject(output)
 			return false, errors.Wrapf(err, output.Message)
@@ -234,7 +234,7 @@ func setPolicy(ctx activity.Context, ccshim shim.ChaincodeStubInterface, input *
 
 		// update endorsement policy for key
 		if err := ccshim.SetStateValidationParameter(input.StateKey, epBytes); err != nil {
-			log.Errorf("failed to set policy for key %s: %+v\n", input.StateKey, err)
+			logger.Errorf("failed to set policy for key %s: %+v\n", input.StateKey, err)
 			output := &Output{Code: 500, Message: fmt.Sprintf("failed to to set policy for key %s", input.StateKey)}
 			ctx.SetOutputObject(output)
 			return false, errors.Wrapf(err, output.Message)

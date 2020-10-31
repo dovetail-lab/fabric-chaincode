@@ -5,18 +5,18 @@ import (
 	"fmt"
 
 	"github.com/dovetail-lab/fabric-chaincode/common"
-	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric-chaincode-go/shim"
 	"github.com/pkg/errors"
 	"github.com/project-flogo/core/activity"
+	"github.com/project-flogo/core/support/log"
 )
 
 // Create a new logger
-var log = shim.NewLogger("activity-fabric-delete")
+var logger = log.ChildLogger(log.RootLogger(), "activity-fabric-delete")
 
 var activityMd = activity.ToMetadata(&Settings{}, &Input{}, &Output{})
 
 func init() {
-	common.SetChaincodeLogLevel(log)
 	_ = activity.Register(&Activity{}, New)
 }
 
@@ -42,17 +42,17 @@ func (a *Activity) Eval(ctx activity.Context) (done bool, err error) {
 		return false, err
 	}
 	if input.StateKey == "" {
-		log.Error("state key is not specified\n")
+		logger.Error("state key is not specified\n")
 		output := &Output{Code: 400, Message: "state key is not specified"}
 		ctx.SetOutputObject(output)
 		return false, errors.New(output.Message)
 	}
-	log.Debugf("state key: %s\n", input.StateKey)
+	logger.Debugf("state key: %s\n", input.StateKey)
 
 	// get chaincode stub
 	stub, err := common.GetChaincodeStub(ctx)
 	if err != nil || stub == nil {
-		log.Errorf("failed to retrieve fabric stub: %+v\n", err)
+		logger.Errorf("failed to retrieve fabric stub: %+v\n", err)
 		output := &Output{Code: 500, Message: err.Error()}
 		ctx.SetOutputObject(output)
 		return false, err
@@ -71,20 +71,20 @@ func deletePrivateData(ctx activity.Context, ccshim shim.ChaincodeStubInterface,
 	// retrieves data for managing composite keys and map to output
 	jsonBytes, err := ccshim.GetPrivateData(input.PrivateCollection, input.StateKey)
 	if err != nil {
-		log.Errorf("failed to get data '%s' from private collection '%s': %+v\n", input.StateKey, input.PrivateCollection, err)
+		logger.Errorf("failed to get data '%s' from private collection '%s': %+v\n", input.StateKey, input.PrivateCollection, err)
 		output := &Output{Code: 500, Message: fmt.Sprintf("failed to get data '%s' from private collection '%s'", input.StateKey, input.PrivateCollection)}
 		ctx.SetOutputObject(output)
 		return false, errors.Wrapf(err, output.Message)
 	}
 	if jsonBytes == nil {
-		log.Infof("no data found for '%s' from private collection '%s'\n", input.StateKey, input.PrivateCollection)
+		logger.Infof("no data found for '%s' from private collection '%s'\n", input.StateKey, input.PrivateCollection)
 		output := &Output{Code: 300, Message: fmt.Sprintf("no data found for '%s' from private collection '%s'", input.StateKey, input.PrivateCollection)}
 		ctx.SetOutputObject(output)
 		return true, nil
 	}
 	var value map[string]interface{}
 	if err := json.Unmarshal(jsonBytes, &value); err != nil {
-		log.Errorf("failed to parse JSON data: %+v\n", err)
+		logger.Errorf("failed to parse JSON data: %+v\n", err)
 		output := &Output{Code: 500, Message: fmt.Sprintf("failed to parse JSON data %s", string(jsonBytes))}
 		ctx.SetOutputObject(output)
 		return false, errors.Wrapf(err, output.Message)
@@ -93,12 +93,12 @@ func deletePrivateData(ctx activity.Context, ccshim shim.ChaincodeStubInterface,
 	// delete data if keyOnly is not specified or keyOnly=false
 	if !input.KeysOnly {
 		if err := ccshim.DelPrivateData(input.PrivateCollection, input.StateKey); err != nil {
-			log.Errorf("failed to delete data from private collection %s: %+v\n", input.PrivateCollection, err)
+			logger.Errorf("failed to delete data from private collection %s: %+v\n", input.PrivateCollection, err)
 			output := &Output{Code: 500, Message: fmt.Sprintf("failed to delete data from private collection %s", input.PrivateCollection)}
 			ctx.SetOutputObject(output)
 			return false, errors.Wrapf(err, output.Message)
 		}
-		log.Debugf("deleted from private collection %s, data: %s\n", input.PrivateCollection, string(jsonBytes))
+		logger.Debugf("deleted from private collection %s, data: %s\n", input.PrivateCollection, string(jsonBytes))
 	}
 
 	// delete composite keys if specified
@@ -106,9 +106,9 @@ func deletePrivateData(ctx activity.Context, ccshim shim.ChaincodeStubInterface,
 	if compKeys != nil && len(compKeys) > 0 {
 		for _, k := range compKeys {
 			if err := ccshim.DelPrivateData(input.PrivateCollection, k); err != nil {
-				log.Errorf("failed to delete composite key %s from collection %s: %+v\n", k, input.PrivateCollection, err)
+				logger.Errorf("failed to delete composite key %s from collection %s: %+v\n", k, input.PrivateCollection, err)
 			} else {
-				log.Debugf("deleted composite key %s from collection %s\n", k, input.PrivateCollection)
+				logger.Debugf("deleted composite key %s from collection %s\n", k, input.PrivateCollection)
 			}
 		}
 	}
@@ -127,20 +127,20 @@ func deleteData(ctx activity.Context, ccshim shim.ChaincodeStubInterface, input 
 	// retrieves data for managing composite keys and map to output
 	jsonBytes, err := ccshim.GetState(input.StateKey)
 	if err != nil {
-		log.Errorf("failed to get data '%s': %+v\n", input.StateKey, err)
+		logger.Errorf("failed to get data '%s': %+v\n", input.StateKey, err)
 		output := &Output{Code: 500, Message: fmt.Sprintf("failed to get data for key '%s'", input.StateKey)}
 		ctx.SetOutputObject(output)
 		return false, errors.Wrapf(err, output.Message)
 	}
 	if jsonBytes == nil {
-		log.Infof("no data found for '%s'\n", input.StateKey)
+		logger.Infof("no data found for '%s'\n", input.StateKey)
 		output := &Output{Code: 300, Message: fmt.Sprintf("no data found for '%s'", input.StateKey)}
 		ctx.SetOutputObject(output)
 		return true, nil
 	}
 	var value map[string]interface{}
 	if err := json.Unmarshal(jsonBytes, &value); err != nil {
-		log.Errorf("failed to parse JSON data: %+v\n", err)
+		logger.Errorf("failed to parse JSON data: %+v\n", err)
 		output := &Output{Code: 500, Message: fmt.Sprintf("failed to parse JSON data: %s", string(jsonBytes))}
 		ctx.SetOutputObject(output)
 		return false, errors.Wrapf(err, output.Message)
@@ -149,11 +149,11 @@ func deleteData(ctx activity.Context, ccshim shim.ChaincodeStubInterface, input 
 	// delete data if keyOnly is not specified or keyOnly=false
 	if !input.KeysOnly {
 		if err := ccshim.DelState(input.StateKey); err != nil {
-			log.Errorf("failed to delete data: %+v\n", err)
+			logger.Errorf("failed to delete data: %+v\n", err)
 			output := &Output{Code: 500, Message: fmt.Sprintf("failed to delete data for key %s", input.StateKey)}
 			return false, errors.Wrapf(err, output.Message)
 		}
-		log.Debugf("deleted data: %s\n", string(jsonBytes))
+		logger.Debugf("deleted data: %s\n", string(jsonBytes))
 	}
 
 	// delete composite keys if specified
@@ -161,9 +161,9 @@ func deleteData(ctx activity.Context, ccshim shim.ChaincodeStubInterface, input 
 	if compKeys != nil && len(compKeys) > 0 {
 		for _, k := range compKeys {
 			if err := ccshim.DelState(k); err != nil {
-				log.Errorf("failed to delete composite key %s: %+v\n", k, err)
+				logger.Errorf("failed to delete composite key %s: %+v\n", k, err)
 			} else {
-				log.Debugf("deleted composite key %s\n", k)
+				logger.Debugf("deleted composite key %s\n", k)
 			}
 		}
 	}

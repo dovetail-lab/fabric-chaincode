@@ -4,23 +4,20 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 
 	"github.com/pkg/errors"
 
-	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric-chaincode-go/shim"
 	"github.com/project-flogo/core/activity"
 	"github.com/project-flogo/core/data/expression"
 	"github.com/project-flogo/core/data/resolve"
 	"github.com/project-flogo/core/data/schema"
+	"github.com/project-flogo/core/support/log"
 	"github.com/project-flogo/flow/instance"
 	jschema "github.com/xeipuuv/gojsonschema"
 )
-
-// Create a new logger
-var log = shim.NewLogger("fabric-common")
 
 const (
 	// KeyField attribute used in query response of key-value pairs
@@ -31,29 +28,14 @@ const (
 	FabricStub = "_chaincode_stub"
 )
 
-func init() {
-	SetChaincodeLogLevel(log)
-}
-
-// SetChaincodeLogLevel sets log level of a chaincode logger according to env 'CORE_CHAINCODE_LOGGING_LEVEL'
-func SetChaincodeLogLevel(logger *shim.ChaincodeLogger) {
-	loglevel := "DEBUG"
-	if l, ok := os.LookupEnv("CORE_CHAINCODE_LOGGING_LEVEL"); ok {
-		loglevel = l
-	}
-	if level, err := shim.LogLevel(loglevel); err != nil {
-		logger.SetLevel(level)
-	} else {
-		logger.SetLevel(shim.LogDebug)
-	}
-}
+var logger = log.ChildLogger(log.RootLogger(), "fabric-chaincode-common")
 
 // GetActivityInputSchema returns schema of an activity input attribute
 func GetActivityInputSchema(ctx activity.Context, name string) (string, error) {
 	if sIO, ok := ctx.(schema.HasSchemaIO); ok {
 		s := sIO.GetInputSchema(name)
 		if s != nil {
-			log.Debugf("schema for attribute '%s': %T, %s\n", name, s, s.Value())
+			logger.Debugf("schema for attribute '%s': %T, %s\n", name, s, s.Value())
 			return s.Value(), nil
 		}
 	}
@@ -65,7 +47,7 @@ func GetActivityOutputSchema(ctx activity.Context, name string) (string, error) 
 	if sIO, ok := ctx.(schema.HasSchemaIO); ok {
 		s := sIO.GetOutputSchema(name)
 		if s != nil {
-			log.Debugf("schema for attribute '%s': %T, %s\n", name, s, s.Value())
+			logger.Debugf("schema for attribute '%s': %T, %s\n", name, s, s.Value())
 			return s.Value(), nil
 		}
 	}
@@ -78,20 +60,20 @@ func GetChaincodeStub(ctx activity.Context) (shim.ChaincodeStubInterface, error)
 	if taskInst, ok := ctx.(*instance.TaskInst); ok {
 		flowInst := taskInst.ActivityHost().(*instance.Instance)
 		scope := flowInst.GetMasterScope()
-		log.Debugf("flow scope: %+v", scope)
+		logger.Debugf("flow scope: %+v", scope)
 
 		if stub, exists := scope.GetValue(FabricStub); exists && stub != nil {
 			ccshim, found := stub.(shim.ChaincodeStubInterface)
 			if !found {
-				log.Errorf("stub type %T is not a ChaincodeStubInterface\n", stub)
+				logger.Errorf("stub type %T is not a ChaincodeStubInterface\n", stub)
 				return nil, errors.Errorf("stub type %T is not a ChaincodeStubInterface", stub)
 			}
 			return ccshim, nil
 		}
-		log.Error("no stub found in flow scope")
+		logger.Error("no stub found in flow scope")
 		return nil, errors.New("no stub found in flow scope")
 	}
-	log.Errorf("ctx is not a TaskInst: %+v", ctx)
+	logger.Errorf("ctx is not a TaskInst: %+v", ctx)
 	return nil, errors.Errorf("ctx is not a TaskInst: %+v", ctx)
 }
 
@@ -100,17 +82,17 @@ func GetChaincodeStub(ctx activity.Context) (shim.ChaincodeStubInterface, error)
 // which is shown in normal flogo mapper as, e.g., "$.content"
 func ResolveFlowData(toResolve string, context activity.Context) (value interface{}, err error) {
 	actionCtx := context.ActivityHost()
-	log.Debugf("Resolving flow data %s; context data: %+v", toResolve, actionCtx.Scope())
+	logger.Debugf("Resolving flow data %s; context data: %+v", toResolve, actionCtx.Scope())
 	factory := expression.NewFactory(resolve.GetBasicResolver())
 	expr, err := factory.NewExpr(toResolve)
 	if err != nil {
-		log.Errorf("failed to construct resolver expression: %+v", err)
+		logger.Errorf("failed to construct resolver expression: %+v", err)
 	}
 	actValue, err := expr.Eval(actionCtx.Scope())
 	if err != nil {
-		log.Errorf("failed to resolve expression %+v", err)
+		logger.Errorf("failed to resolve expression %+v", err)
 	}
-	log.Debugf("Resolved value for %s: %T - %+v", toResolve, actValue, actValue)
+	logger.Debugf("Resolved value for %s: %T - %+v", toResolve, actValue, actValue)
 	return actValue, err
 }
 
@@ -151,7 +133,7 @@ func addIndex(parameters []ParameterIndex, param ParameterIndex) []ParameterInde
 // This is necessary because Golang JSON parser does not maintain the sequence of object parameters.
 func OrderedParameters(schemaData []byte) ([]ParameterIndex, error) {
 	if schemaData == nil || len(schemaData) == 0 {
-		log.Debug("schema data is empty")
+		logger.Debug("schema data is empty")
 		return nil, nil
 	}
 	// extract root object properties from JSON schema
@@ -159,14 +141,14 @@ func OrderedParameters(schemaData []byte) ([]ParameterIndex, error) {
 		Data json.RawMessage `json:"properties"`
 	}
 	if err := json.Unmarshal(schemaData, &rawProperties); err != nil {
-		log.Errorf("failed to extract properties from metadata: %+v", err)
+		logger.Errorf("failed to extract properties from metadata: %+v", err)
 		return nil, err
 	}
 
 	// extract parameter names from raw object properties
 	var params map[string]json.RawMessage
 	if err := json.Unmarshal(rawProperties.Data, &params); err != nil {
-		log.Errorf("failed to extract parameters from object schema: %+v", err)
+		logger.Errorf("failed to extract parameters from object schema: %+v", err)
 		return nil, err
 	}
 
@@ -194,13 +176,13 @@ func OrderedParameters(schemaData []byte) ([]ParameterIndex, error) {
 					RawType string `json:"type"`
 				}
 				if err := json.Unmarshal(v, &paramDef); err != nil {
-					log.Errorf("failed to extract JSON type of parameter %s: %+v", p, err)
+					logger.Errorf("failed to extract JSON type of parameter %s: %+v", p, err)
 				}
 				paramType := jschema.TYPE_OBJECT
 				if paramDef.RawType != "" {
 					paramType = paramDef.RawType
 				}
-				log.Debugf("add index parameter '%s' type '%s'\n", p, paramType)
+				logger.Debugf("add index parameter '%s' type '%s'\n", p, paramType)
 				paramIndex = addIndex(paramIndex, ParameterIndex{Name: p, JSONType: paramType, start: pos, end: endPos})
 			}
 			pos += len(key) + len(seg)
@@ -241,19 +223,19 @@ func ConstructQueryResponse(resultsIterator shim.StateQueryIteratorInterface, co
 			if collection == "" {
 				if value, err = stub.GetState(key); err != nil {
 					// ignore key if value does not exist
-					log.Errorf("failed to retrieve state for key %s: %+v", key, err)
+					logger.Errorf("failed to retrieve state for key %s: %+v", key, err)
 					continue
 				}
 			} else {
 				if value, err = stub.GetPrivateData(collection, key); err != nil {
 					// ignore key if value does not exist
-					log.Errorf("failed to retrieve state for key %s: %+v", key, err)
+					logger.Errorf("failed to retrieve state for key %s: %+v", key, err)
 					continue
 				}
 			}
 			if value == nil {
 				// ignore nil state
-				log.Warningf("nil state for key %s", key)
+				logger.Warnf("nil state for key %s", key)
 				continue
 			}
 		}
@@ -284,7 +266,7 @@ func ExtractCompositeKeys(stub shim.ChaincodeStubInterface, compositeKeyDefs str
 	// verify that value is a map
 	obj, ok := value.(map[string]interface{})
 	if !ok {
-		log.Debugf("No composite keys because state value is not a map\n")
+		logger.Debugf("No composite keys because state value is not a map\n")
 		return nil
 	}
 
@@ -292,7 +274,7 @@ func ExtractCompositeKeys(stub shim.ChaincodeStubInterface, compositeKeyDefs str
 	if len(compositeKeyDefs) > 0 {
 		keyMap, err := ParseCompositeKeyDefs(compositeKeyDefs)
 		if err != nil {
-			log.Errorf("failed to parse composite key definition: %+v", err)
+			logger.Errorf("failed to parse composite key definition: %+v", err)
 			return nil
 		}
 		var compositeKeys []string
@@ -303,7 +285,7 @@ func ExtractCompositeKeys(stub shim.ChaincodeStubInterface, compositeKeyDefs str
 		}
 		return compositeKeys
 	}
-	log.Debugf("No composite key is defined")
+	logger.Debugf("No composite key is defined")
 	return nil
 }
 
@@ -326,7 +308,7 @@ func ParseCompositeKeyDefs(def string) (map[string][]string, error) {
 // returns "" if failed to extract any attribute from the value object
 func makeCompositeKey(stub shim.ChaincodeStubInterface, keyName string, attributes []string, keyValue string, value map[string]interface{}) string {
 	if keyName == "" || attributes == nil || len(attributes) == 0 {
-		log.Debugf("invalid composite key definition: name %s attributes %+v\n", keyName, attributes)
+		logger.Debugf("invalid composite key definition: name %s attributes %+v\n", keyName, attributes)
 		return ""
 	}
 	var attrValues []string
@@ -334,12 +316,12 @@ func makeCompositeKey(stub shim.ChaincodeStubInterface, keyName string, attribut
 		if v, ok := value[k]; ok {
 			attrValues = append(attrValues, fmt.Sprintf("%v", v))
 		} else {
-			log.Debugf("composite key attribute %s is not found in state value\n", k)
+			logger.Debugf("composite key attribute %s is not found in state value\n", k)
 			return ""
 		}
 	}
 	if attrValues == nil || len(attrValues) == 0 {
-		log.Debug("No composite key attribute found in state value\n")
+		logger.Debug("No composite key attribute found in state value\n")
 		return ""
 	}
 
@@ -349,7 +331,7 @@ func makeCompositeKey(stub shim.ChaincodeStubInterface, keyName string, attribut
 	}
 	compositeKey, err := stub.CreateCompositeKey(keyName, attrValues)
 	if err != nil {
-		log.Errorf("failed to create composite key %s with values %+v\n", keyName, attrValues)
+		logger.Errorf("failed to create composite key %s with values %+v\n", keyName, attrValues)
 		return ""
 	}
 	return compositeKey
