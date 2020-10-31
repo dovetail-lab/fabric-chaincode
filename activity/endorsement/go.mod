@@ -9,7 +9,7 @@ replace github.com/project-flogo/core => github.com/yxuco/core v1.1.1
 require (
 	github.com/Knetic/govaluate v3.0.0+incompatible // indirect
 	github.com/Shopify/sarama v1.27.2 // indirect
-	github.com/dovetail-lab/fabric-chaincode/common v2.0.0
+	github.com/dovetail-lab/fabric-chaincode/common v1.2.0
 	github.com/golang/protobuf v1.4.3
 	github.com/hashicorp/go-version v1.2.1 // indirect
 	github.com/hyperledger/fabric v2.1.1+incompatible
