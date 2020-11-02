@@ -28,6 +28,10 @@ const (
 
 var logger = log.ChildLogger(log.RootLogger(), "trigger-fabric-transaction")
 
+func init() {
+	_ = trigger.Register(&Trigger{}, &Factory{})
+}
+
 // TriggerMap maps transaction name in trigger handler setting to the trigger,
 // so we can lookup trigger by transaction name
 var triggerMap = map[string]*Trigger{}
