@@ -3,7 +3,7 @@
 This Flogo extension is designed to allow developers to design and implement Hyperledger Fabric chaincode in the Flogo visual programming environment. This extension supports the following release versions:
 
 - [TIBCO Flogo® Enterprise 2.10](https://docs.tibco.com/products/tibco-flogo-enterprise-2-10-0)
-- [Hyperledger Fabric 1.4](https://www.hyperledger.org/projects/fabric)
+- [Hyperledger Fabric 2.2](https://www.hyperledger.org/projects/fabric)
 
 The [Transaction Trigger](trigger/transaction) allows you to configure the chaincode input and output schema, including normal and/or transient input parameters.
 
